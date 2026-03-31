@@ -25,12 +25,35 @@ app.get("/api/debug/oauth", (req, res) => {
   });
 });
 
-// OAuth State Store (in-memory for dev)
+// OAuth State Store (in-memory for dev - NOT for production/serverless)
 const oauthStates = new Map<string, { provider: string; redirectTo: string }>();
+
+// Use cookie-based state for serverless compatibility
+const generateState = (res: express.Response, provider: string, redirectTo: string) => {
+  const state = crypto.randomUUID();
+  res.cookie(`oauth_state_${state}`, JSON.stringify({ provider, redirectTo }), { 
+    httpOnly: true, 
+    maxAge: 10 * 60 * 1000, // 10 minutes
+    sameSite: 'lax'
+  });
+  return state;
+};
+
+const verifyState = (req: express.Request, state: string) => {
+  const cookieName = `oauth_state_${state}`;
+  const stateData = req.cookies[cookieName];
+  if (stateData) {
+    return JSON.parse(stateData);
+  }
+  return null;
+};
+
+const clearState = (res: express.Response, state: string) => {
+  res.clearCookie(`oauth_state_${state}`);
+};
 
 // Google OAuth
 app.get("/api/auth/google", (req, res) => {
-  const state = crypto.randomUUID();
   const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
   const redirectUri = `${appUrl}/api/auth/google/callback`;
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -39,7 +62,7 @@ app.get("/api/auth/google", (req, res) => {
     return res.status(500).json({ error: "Google OAuth not configured" });
   }
 
-  oauthStates.set(state, { provider: "google", redirectTo: "/dashboard" });
+  const state = generateState(res, "google", "/dashboard");
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${clientId}` +
@@ -54,18 +77,19 @@ app.get("/api/auth/google", (req, res) => {
 
 app.get("/api/auth/google/callback", async (req, res) => {
   const { code, state, error } = req.query;
+  const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
   
-  if (error || !oauthStates.has(state as string)) {
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+  const stateData = verifyState(req, state as string);
+  
+  if (error || !stateData) {
     return res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 
-  oauthStates.delete(state as string);
+  clearState(res, state as string);
 
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
     const redirectUri = `${appUrl}/api/auth/google/callback`;
 
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -81,7 +105,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
     });
 
     if (!tokenResponse.ok) {
-      return res.redirect("/signin?error=auth_failed");
+      return res.redirect(`${appUrl}/signin?error=auth_failed`);
     }
 
     const tokens = await tokenResponse.json();
@@ -95,21 +119,19 @@ app.get("/api/auth/google/callback", async (req, res) => {
     res.redirect(`${appUrl}/dashboard`);
   } catch (err) {
     console.error("Google OAuth error:", err);
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
     res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 });
 
 // GitHub OAuth
 app.get("/api/auth/github", (req, res) => {
-  const state = crypto.randomUUID();
   const clientId = process.env.GITHUB_CLIENT_ID;
   
   if (!clientId) {
     return res.status(500).json({ error: "GitHub OAuth not configured" });
   }
 
-  oauthStates.set(state, { provider: "github", redirectTo: "/dashboard" });
+  const state = generateState(res, "github", "/dashboard");
 
   const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
     `client_id=${clientId}` +
@@ -121,18 +143,19 @@ app.get("/api/auth/github", (req, res) => {
 
 app.get("/api/auth/github/callback", async (req, res) => {
   const { code, state, error } = req.query;
+  const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
   
-  if (error || !oauthStates.has(state as string)) {
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+  const stateData = verifyState(req, state as string);
+  
+  if (error || !stateData) {
     return res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 
-  oauthStates.delete(state as string);
+  clearState(res, state as string);
 
   try {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
 
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
@@ -176,7 +199,6 @@ app.get("/api/auth/github/callback", async (req, res) => {
     res.redirect(`${appUrl}/dashboard`);
   } catch (err) {
     console.error("GitHub OAuth error:", err);
-    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
     res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 });
