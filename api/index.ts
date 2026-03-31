@@ -23,7 +23,8 @@ const oauthStates = new Map<string, { provider: string; redirectTo: string }>();
 // Google OAuth
 app.get("/api/auth/google", (req, res) => {
   const state = crypto.randomUUID();
-  const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+  const appUrl = process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`;
+  const redirectUri = `${appUrl}/api/auth/google/callback`;
   const clientId = process.env.GOOGLE_CLIENT_ID;
   
   if (!clientId) {
@@ -55,7 +56,8 @@ app.get("/api/auth/google/callback", async (req, res) => {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+    const appUrl = process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${appUrl}/api/auth/google/callback`;
 
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
