@@ -12,9 +12,17 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
-// API Routes
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+// Debug endpoint to check OAuth config
+app.get("/api/debug/oauth", (req, res) => {
+  const appUrl = process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`;
+  res.json({
+    viteAppUrl: process.env.VITE_APP_URL,
+    calculatedAppUrl: appUrl,
+    redirectUri: `${appUrl}/api/auth/google/callback`,
+    googleClientIdExists: !!process.env.GOOGLE_CLIENT_ID,
+    protocol: req.protocol,
+    host: req.get("host")
+  });
 });
 
 // OAuth State Store (in-memory for dev)
@@ -23,7 +31,7 @@ const oauthStates = new Map<string, { provider: string; redirectTo: string }>();
 // Google OAuth
 app.get("/api/auth/google", (req, res) => {
   const state = crypto.randomUUID();
-  const appUrl = process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`;
+  const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
   const redirectUri = `${appUrl}/api/auth/google/callback`;
   const clientId = process.env.GOOGLE_CLIENT_ID;
   
