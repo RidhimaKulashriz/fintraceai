@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-primary: #00C389;
+  --color-primary-dark: #0B8F63;
+  --color-neon: #21F3A4;
+  --color-fraud: #FF4D4F;
+  --color-warning: #F59E0B;
+
+  --color-bg-dark: #020617;
+  --color-card-dark: #0F172A;
+  --color-bg-light: #F8FAFC;
+  --color-card-light: #FFFFFF;
+}
+
+@layer base {
+  :root {
+    --background: #F8FAFC;
+    --foreground: #020617;
+    --card: #FFFFFF;
+    --card-foreground: #020617;
+    --primary: #00C389;
+    --primary-foreground: #FFFFFF;
+    --border: #E2E8F0;
+  }
+
+  .dark {
+    --background: #020617;
+    --foreground: #F8FAFC;
+    --card: #0F172A;
+    --card-foreground: #F8FAFC;
+    --primary: #00C389;
+    --primary-foreground: #020617;
+    --border: #1E293B;
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+
+  .neon-glow {
+    @apply shadow-[0_0_15px_rgba(33,243,164,0.3)];
+  }
+
+  .fraud-glow {
+    @apply shadow-[0_0_15px_rgba(255,77,79,0.3)];
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
