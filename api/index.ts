@@ -56,7 +56,8 @@ app.get("/api/auth/google/callback", async (req, res) => {
   const { code, state, error } = req.query;
   
   if (error || !oauthStates.has(state as string)) {
-    return res.redirect("/signin?error=auth_failed");
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+    return res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 
   oauthStates.delete(state as string);
@@ -64,7 +65,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const appUrl = process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`;
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
     const redirectUri = `${appUrl}/api/auth/google/callback`;
 
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -91,10 +92,11 @@ app.get("/api/auth/google/callback", async (req, res) => {
     res.cookie("auth_token", tokens.id_token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie("user_info", JSON.stringify({ email: user.email, name: user.name, picture: user.picture }), { maxAge: 7 * 24 * 60 * 60 * 1000 });
     
-    res.redirect("/dashboard");
+    res.redirect(`${appUrl}/dashboard`);
   } catch (err) {
     console.error("Google OAuth error:", err);
-    res.redirect("/signin?error=auth_failed");
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+    res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 });
 
@@ -121,7 +123,8 @@ app.get("/api/auth/github/callback", async (req, res) => {
   const { code, state, error } = req.query;
   
   if (error || !oauthStates.has(state as string)) {
-    return res.redirect("/signin?error=auth_failed");
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+    return res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 
   oauthStates.delete(state as string);
@@ -129,6 +132,7 @@ app.get("/api/auth/github/callback", async (req, res) => {
   try {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
 
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
@@ -146,7 +150,7 @@ app.get("/api/auth/github/callback", async (req, res) => {
     const tokens = await tokenResponse.json();
     
     if (!tokens.access_token) {
-      return res.redirect("/signin?error=auth_failed");
+      return res.redirect(`${appUrl}/signin?error=auth_failed`);
     }
 
     const userResponse = await fetch("https://api.github.com/user", {
@@ -169,10 +173,11 @@ app.get("/api/auth/github/callback", async (req, res) => {
     res.cookie("auth_token", tokens.access_token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie("user_info", JSON.stringify({ email: primaryEmail, name: user.name || user.login, picture: user.avatar_url }), { maxAge: 7 * 24 * 60 * 60 * 1000 });
     
-    res.redirect("/dashboard");
+    res.redirect(`${appUrl}/dashboard`);
   } catch (err) {
     console.error("GitHub OAuth error:", err);
-    res.redirect("/signin?error=auth_failed");
+    const appUrl = (process.env.VITE_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, '');
+    res.redirect(`${appUrl}/signin?error=auth_failed`);
   }
 });
 
